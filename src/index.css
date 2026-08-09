@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-sans: 'Inter', sans-serif;
+
+  --color-luxury-gold: #D4AF37;
+  --color-gold-hover: #C5A059;
+  --color-emerald-green: #063B26;
+  --color-emerald-light: #0B5C3D;
+  --color-charcoal-black: #121212;
+  --color-ivory-white: #FDFBF7;
+  --color-ivory-dark: #F5F2EB;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-ivory-white);
+    color: var(--color-charcoal-black);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-editorial {
+    font-family: var(--font-serif);
+    font-weight: 500;
+  }
+}
+
+/* Luxury Card Elements */
+.gemaura-card {
+  background: white;
+  border: 1px solid rgba(18, 18, 18, 0.06);
+  transition: all 0.4s ease;
+  overflow: hidden;
+  border-radius: 0px; /* Editorial square style */
+}
+
+.gemaura-card:hover {
+  border-color: var(--color-luxury-gold);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(6, 59, 38, 0.05);
+}
+
+/* Premium Buttons */
+.btn-gemaura {
+  background-color: var(--color-emerald-green);
+  color: var(--color-ivory-white);
+  border: 1px solid var(--color-emerald-green);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border-radius: 0;
+  transition: all 0.3s ease;
+}
+
+.btn-gemaura:hover {
+  background-color: var(--color-ivory-white);
+  color: var(--color-emerald-green);
+}
+
+.btn-gemaura-outline {
+  background-color: transparent;
+  color: var(--color-charcoal-black);
+  border: 1px solid var(--color-charcoal-black);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border-radius: 0;
+  transition: all 0.3s ease;
+}
+
+.btn-gemaura-outline:hover {
+  background-color: var(--color-charcoal-black);
+  color: var(--color-ivory-white);
+}
+
+/* Glassmorphism Navigation */
+.luxury-navbar {
+  background: rgba(253, 251, 247, 0.9);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(18, 18, 18, 0.08);
+}
+
+/* Premium Form Elements */
+.gemaura-input {
+  border: 1px solid rgba(18, 18, 18, 0.15);
+  background-color: transparent;
+  padding: 0.75rem 1rem;
+  border-radius: 0;
+  color: var(--color-charcoal-black);
+  transition: border-color 0.3s ease;
+}
+
+.gemaura-input:focus {
+  outline: none;
+  border-color: var(--color-luxury-gold);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-ivory-white);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(6, 59, 38, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-emerald-green);
+}
