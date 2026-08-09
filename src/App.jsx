@@ -19,7 +19,7 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <WishlistProvider>
-          <Router>
+          <Router basename="/GemAura">
             <div className="flex flex-col min-h-screen bg-ivory-white text-charcoal-black selection:bg-luxury-gold selection:text-white">
               {/* Premium Luxury Navbar */}
               <Navbar />
