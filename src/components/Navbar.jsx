@@ -90,7 +90,7 @@ export default function Navbar() {
             }}
           >
             Shop
-          </Link>
+          </a>
 
           {/* Contact Link */}
           <Link 
