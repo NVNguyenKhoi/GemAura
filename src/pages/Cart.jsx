@@ -13,6 +13,10 @@ export default function Cart() {
   const [couponSuccess, setCouponSuccess] = useState("");
 
   const [checkoutStep, setCheckoutStep] = useState("cart"); // cart | payment | success
+  
+  // Payment methods: 'card' | 'vietqr' | 'momo' | 'paypal'
+  const [paymentMethod, setPaymentMethod] = useState("card");
+
   const [paymentData, setPaymentData] = useState({
     cardName: "",
     cardNumber: "",
@@ -21,6 +25,7 @@ export default function Cart() {
   });
   const [paymentErrors, setPaymentErrors] = useState({});
   const [recentOrderId, setRecentOrderId] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleCouponSubmit = (e) => {
     e.preventDefault();
@@ -43,10 +48,15 @@ export default function Cart() {
       navigate("/login");
       return;
     }
+    // Generate a temporary order ID for payment transfers reference
+    const tempId = `GEM-${Math.floor(1000 + Math.random() * 9000)}`;
+    setRecentOrderId(tempId);
     setCheckoutStep("payment");
   };
 
   const validatePayment = () => {
+    if (paymentMethod !== "card") return true; // Other methods validated via simulation
+
     const errs = {};
     if (!paymentData.cardName.trim()) errs.cardName = "Cardholder name is required";
     
@@ -72,17 +82,24 @@ export default function Cart() {
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
     if (validatePayment()) {
-      const orderItems = cartItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        qty: item.quantity,
-        price: item.price
-      }));
-      const order = addOrder(orderItems, total);
+      setIsProcessing(true);
       
-      setRecentOrderId(order.id);
-      clearCart();
-      setCheckoutStep("success");
+      // Simulate gateway authorization time
+      setTimeout(() => {
+        const orderItems = cartItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          qty: item.quantity,
+          price: item.price
+        }));
+        
+        // Save the order to auth orders database
+        addOrder(orderItems, total);
+        
+        setIsProcessing(false);
+        clearCart();
+        setCheckoutStep("success");
+      }, 2500);
     }
   };
 
@@ -90,6 +107,16 @@ export default function Cart() {
     const { name, value } = e.target;
     setPaymentData((prev) => ({ ...prev, [name]: value }));
   };
+
+  // Convert USD price to approximate VND for QR Codes (1 USD = 25,000 VND)
+  const exchangeRate = 25000;
+  const totalInVND = total * exchangeRate;
+
+  // Generate VietQR API image url
+  const bankId = "vietinbank";
+  const accountNumber = "113366668888";
+  const accountName = "GEMAURA JEWELRY";
+  const vietQrUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-compact2.png?amount=${totalInVND}&addInfo=${recentOrderId}&accountName=${encodeURIComponent(accountName)}`;
 
   if (checkoutStep === "success") {
     return (
@@ -137,7 +164,7 @@ export default function Cart() {
           Sacred Inventory
         </span>
         <h2 className="font-editorial text-uppercase text-dark mt-2 display-5">
-          {checkoutStep === "payment" ? "Secure Checkout Authorization" : "Your Shopping Bag"}
+          {checkoutStep === "payment" ? "Secure Payment Gateway" : "Your Shopping Bag"}
         </h2>
         <div className="mx-auto bg-warning mt-2" style={{ height: "1px", width: "80px" }}></div>
       </div>
@@ -281,77 +308,243 @@ export default function Cart() {
           </div>
         </div>
       ) : (
-        /* Secure Checkout Payment Form */
-        <div className="border p-4 p-md-5 bg-white mx-auto" style={{ maxWidth: "600px" }}>
+        /* Secure Checkout Payment Form with Dynamic Gateway Selection */
+        <div className="border p-4 p-md-5 bg-white mx-auto" style={{ maxWidth: "700px" }}>
+          
+          {/* Method Selection Bar */}
+          <div className="mb-4">
+            <label className="form-label text-uppercase text-secondary tracking-wider d-block mb-3" style={{ fontSize: "0.7rem", fontWeight: "600" }}>
+              Select Payment Method
+            </label>
+            <div className="row g-2">
+              <div className="col-6 col-sm-3">
+                <button 
+                  type="button"
+                  onClick={() => setPaymentMethod("card")}
+                  className={`btn w-100 py-3 rounded-0 border d-flex flex-column align-items-center gap-1 ${paymentMethod === 'card' ? 'btn-dark' : 'btn-light border-light text-secondary'}`}
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  <i className="bi bi-credit-card" style={{ fontSize: "1.2rem" }}></i>
+                  <span>Card</span>
+                </button>
+              </div>
+              <div className="col-6 col-sm-3">
+                <button 
+                  type="button"
+                  onClick={() => setPaymentMethod("vietqr")}
+                  className={`btn w-100 py-3 rounded-0 border d-flex flex-column align-items-center gap-1 ${paymentMethod === 'vietqr' ? 'btn-dark' : 'btn-light border-light text-secondary'}`}
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  <i className="bi bi-qr-code-scan" style={{ fontSize: "1.2rem" }}></i>
+                  <span>VietQR</span>
+                </button>
+              </div>
+              <div className="col-6 col-sm-3">
+                <button 
+                  type="button"
+                  onClick={() => setPaymentMethod("momo")}
+                  className={`btn w-100 py-3 rounded-0 border d-flex flex-column align-items-center gap-1 ${paymentMethod === 'momo' ? 'btn-dark' : 'btn-light border-light text-secondary'}`}
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  <i className="bi bi-phone" style={{ fontSize: "1.2rem" }}></i>
+                  <span>MoMo</span>
+                </button>
+              </div>
+              <div className="col-6 col-sm-3">
+                <button 
+                  type="button"
+                  onClick={() => setPaymentMethod("paypal")}
+                  className={`btn w-100 py-3 rounded-0 border d-flex flex-column align-items-center gap-1 ${paymentMethod === 'paypal' ? 'btn-dark' : 'btn-light border-light text-secondary'}`}
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  <i className="bi bi-paypal" style={{ fontSize: "1.2rem" }}></i>
+                  <span>PayPal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <h3 className="font-editorial text-uppercase text-dark mb-2 d-flex align-items-center gap-2">
             <i className="bi bi-shield-lock text-warning"></i>
-            <span>Secure Guild Transaction</span>
+            <span>Secure Gate: {paymentMethod.toUpperCase()}</span>
           </h3>
           <p className="text-secondary mb-4" style={{ fontSize: "0.85rem" }}>
-            Enter your billing card credentials to authorize jewelry shipment. Net total to charge: <strong>${total}</strong>.
+            Net total to authorize: <strong>${total}</strong> (approx. <strong>{totalInVND.toLocaleString()} VND</strong>). Order ID: <strong>{recentOrderId}</strong>.
           </p>
 
           <form onSubmit={handlePaymentSubmit} className="d-flex flex-column gap-3">
-            <div>
-              <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Cardholder Name *</label>
-              <input
-                type="text"
-                name="cardName"
-                className={`form-control rounded-0 gemaura-input ${paymentErrors.cardName ? 'is-invalid' : ''}`}
-                placeholder="Aurelia Sterling"
-                value={paymentData.cardName}
-                onChange={handlePaymentInputChange}
-              />
-              {paymentErrors.cardName && <div className="invalid-feedback">{paymentErrors.cardName}</div>}
-            </div>
+            
+            {/* 1. CREDIT CARD FORM */}
+            {paymentMethod === "card" && (
+              <div className="d-flex flex-column gap-3">
+                <div>
+                  <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Cardholder Name *</label>
+                  <input
+                    type="text"
+                    name="cardName"
+                    className={`form-control rounded-0 gemaura-input ${paymentErrors.cardName ? 'is-invalid' : ''}`}
+                    placeholder="Aurelia Sterling"
+                    value={paymentData.cardName}
+                    onChange={handlePaymentInputChange}
+                  />
+                  {paymentErrors.cardName && <div className="invalid-feedback">{paymentErrors.cardName}</div>}
+                </div>
 
-            <div>
-              <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Credit Card Number *</label>
-              <input
-                type="text"
-                name="cardNumber"
-                className={`form-control rounded-0 gemaura-input ${paymentErrors.cardNumber ? 'is-invalid' : ''}`}
-                placeholder="1111222233334444"
-                value={paymentData.cardNumber}
-                onChange={handlePaymentInputChange}
-              />
-              {paymentErrors.cardNumber && <div className="invalid-feedback">{paymentErrors.cardNumber}</div>}
-            </div>
+                <div>
+                  <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Credit Card Number *</label>
+                  <input
+                    type="text"
+                    name="cardNumber"
+                    className={`form-control rounded-0 gemaura-input ${paymentErrors.cardNumber ? 'is-invalid' : ''}`}
+                    placeholder="1111222233334444"
+                    value={paymentData.cardNumber}
+                    onChange={handlePaymentInputChange}
+                  />
+                  {paymentErrors.cardNumber && <div className="invalid-feedback">{paymentErrors.cardNumber}</div>}
+                </div>
 
-            <div className="row g-3">
-              <div className="col-6">
-                <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Expiry Date (MM/YY) *</label>
-                <input
-                  type="text"
-                  name="expiry"
-                  className={`form-control rounded-0 gemaura-input ${paymentErrors.expiry ? 'is-invalid' : ''}`}
-                  placeholder="12/28"
-                  value={paymentData.expiry}
-                  onChange={handlePaymentInputChange}
-                />
-                {paymentErrors.expiry && <div className="invalid-feedback">{paymentErrors.expiry}</div>}
+                <div className="row g-3">
+                  <div className="col-6">
+                    <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Expiry Date (MM/YY) *</label>
+                    <input
+                      type="text"
+                      name="expiry"
+                      className={`form-control rounded-0 gemaura-input ${paymentErrors.expiry ? 'is-invalid' : ''}`}
+                      placeholder="12/28"
+                      value={paymentData.expiry}
+                      onChange={handlePaymentInputChange}
+                    />
+                    {paymentErrors.expiry && <div className="invalid-feedback">{paymentErrors.expiry}</div>}
+                  </div>
+
+                  <div className="col-6">
+                    <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Security Code (CVV) *</label>
+                    <input
+                      type="password"
+                      name="cvv"
+                      maxLength="3"
+                      className={`form-control rounded-0 gemaura-input ${paymentErrors.cvv ? 'is-invalid' : ''}`}
+                      placeholder="***"
+                      value={paymentData.cvv}
+                      onChange={handlePaymentInputChange}
+                    />
+                    {paymentErrors.cvv && <div className="invalid-feedback">{paymentErrors.cvv}</div>}
+                  </div>
+                </div>
               </div>
+            )}
 
-              <div className="col-6">
-                <label className="form-label text-uppercase text-secondary tracking-wider" style={{ fontSize: "0.65rem", fontWeight: "600" }}>Security Code (CVV) *</label>
-                <input
-                  type="password"
-                  name="cvv"
-                  maxLength="3"
-                  className={`form-control rounded-0 gemaura-input ${paymentErrors.cvv ? 'is-invalid' : ''}`}
-                  placeholder="***"
-                  value={paymentData.cvv}
-                  onChange={handlePaymentInputChange}
-                />
-                {paymentErrors.cvv && <div className="invalid-feedback">{paymentErrors.cvv}</div>}
+            {/* 2. VIETQR BANK TRANSFER (Dynamic QR Code Generation) */}
+            {paymentMethod === "vietqr" && (
+              <div className="text-center p-4 border bg-light d-flex flex-column align-items-center gap-3">
+                <span className="text-uppercase text-secondary font-bold" style={{ fontSize: "0.75rem" }}>
+                  Scan VietQR to Pay via Mobile Banking App
+                </span>
+                
+                {/* VietQR Dynamic QR Image */}
+                <div className="p-2 bg-white border" style={{ maxWidth: "220px" }}>
+                  <img 
+                    src={vietQrUrl} 
+                    alt="VietQR Bank Transfer" 
+                    className="img-fluid" 
+                    style={{ minHeight: "200px" }}
+                  />
+                </div>
+                
+                <div className="text-start w-100" style={{ fontSize: "0.8rem", lineHeight: "1.6" }}>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">Bank Name:</span>
+                    <strong className="text-dark">VietinBank (ICB)</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">Account Number:</span>
+                    <strong className="text-dark">{accountNumber}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">Account Name:</span>
+                    <strong className="text-dark">{accountName}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">Transfer Amount:</span>
+                    <strong className="text-dark">{totalInVND.toLocaleString()} VND</strong>
+                  </div>
+                  <div className="d-flex justify-content-between py-1.5">
+                    <span className="text-secondary">Message Content:</span>
+                    <strong className="text-warning font-monospace">{recentOrderId}</strong>
+                  </div>
+                </div>
+                
+                <small className="text-secondary" style={{ fontSize: "0.7rem" }}>
+                  * Please input the exact transfer message. Click the authorize button below after completion.
+                </small>
               </div>
-            </div>
+            )}
 
+            {/* 3. MOMO WALLET MOCKUP */}
+            {paymentMethod === "momo" && (
+              <div className="text-center p-4 border bg-light d-flex flex-column align-items-center gap-3">
+                <span className="text-uppercase text-danger font-bold" style={{ fontSize: "0.75rem" }}>
+                  Scan MoMo Wallet QR Code
+                </span>
+                
+                {/* Simulated MoMo QR Code */}
+                <div className="p-3 bg-white border d-flex flex-column align-items-center gap-2" style={{ maxWidth: "220px" }}>
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=momo://pay?phone=0987654321&amount=${totalInVND}&note=${recentOrderId}`}
+                    alt="MoMo Wallet QR"
+                    className="img-fluid"
+                  />
+                  <span className="text-danger font-bold" style={{ fontSize: "0.8rem" }}>MoMo e-Wallet</span>
+                </div>
+
+                <div className="text-start w-100" style={{ fontSize: "0.8rem", lineHeight: "1.6" }}>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">MoMo Wallet Phone:</span>
+                    <strong className="text-dark">0555 839 200</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">Wallet Name:</span>
+                    <strong className="text-dark">GEMAURA JEWELRY</strong>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom py-1.5">
+                    <span className="text-secondary">Transfer Message:</span>
+                    <strong className="text-warning font-monospace">{recentOrderId}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. PAYPAL SANDBOX SIMULATION */}
+            {paymentMethod === "paypal" && (
+              <div className="p-4 border bg-light text-center d-flex flex-column align-items-center gap-3">
+                <span className="text-uppercase text-primary font-bold" style={{ fontSize: "0.75rem" }}>
+                  PayPal Secure Checkout Gateway
+                </span>
+                
+                {/* Simulated PayPal Buttons */}
+                <div className="w-100 d-flex flex-column gap-2" style={{ maxWidth: "320px" }}>
+                  <div className="p-3 bg-warning text-dark font-bold text-center border cursor-pointer" style={{ borderRadius: "4px" }}>
+                    <i className="bi bi-paypal me-2"></i>
+                    PayPal
+                  </div>
+                  <div className="p-3 bg-dark text-white font-bold text-center border cursor-pointer" style={{ borderRadius: "4px" }}>
+                    Debit or Credit Card
+                  </div>
+                </div>
+
+                <p className="text-secondary mb-0" style={{ fontSize: "0.75rem", lineHeight: "1.5" }}>
+                  Integrates with PayPal SandBox developers account. Press the confirmation button below to complete mock verification.
+                </p>
+              </div>
+            )}
+
+            {/* Secure lock details */}
             <div className="d-flex align-items-center gap-2 text-secondary my-2" style={{ fontSize: "0.75rem" }}>
               <i className="bi bi-lock-fill text-success"></i>
               <span>SSL 256-bit secure gateway connection. Encrypted transaction log.</span>
             </div>
 
+            {/* Form actions */}
             <div className="row g-3 mt-2">
               <div className="col-6">
                 <button
@@ -359,6 +552,7 @@ export default function Cart() {
                   onClick={() => setCheckoutStep("cart")}
                   className="btn btn-outline-dark rounded-0 w-100 py-3 text-uppercase"
                   style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}
+                  disabled={isProcessing}
                 >
                   Back to Bag
                 </button>
@@ -366,13 +560,22 @@ export default function Cart() {
               <div className="col-6">
                 <button
                   type="submit"
-                  className="btn btn-dark rounded-0 w-100 py-3 text-uppercase"
+                  className="btn btn-dark rounded-0 w-100 py-3 text-uppercase d-flex align-items-center justify-content-center gap-2"
                   style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}
+                  disabled={isProcessing}
                 >
-                  Authorize Payment
+                  {isProcessing ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Payment</span>
+                  )}
                 </button>
               </div>
             </div>
+
           </form>
         </div>
       )}
