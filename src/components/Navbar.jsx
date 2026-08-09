@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
   const { cartItems } = useCart();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchVal, setSearchVal] = useState(searchParams.get("search") || "");
@@ -28,6 +29,11 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  // Helper to determine if path is active
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
+
   return (
     <nav className="navbar navbar-expand-lg sticky-top luxury-navbar py-3 px-3 px-md-5">
       <div className="container-fluid d-flex justify-content-between align-items-center">
@@ -38,7 +44,7 @@ export default function Navbar() {
         </Link>
 
         {/* Search Bar - Desktop */}
-        <form onSubmit={handleSearchSubmit} className="d-none d-lg-flex align-items-center bg-white border px-3 py-1.5" style={{ width: "350px", borderRadius: "0px" }}>
+        <form onSubmit={handleSearchSubmit} className="d-none d-lg-flex align-items-center bg-white border px-3 py-1.5" style={{ width: "300px", borderRadius: "0px" }}>
           <input
             type="text"
             placeholder="Search gems, elements..."
@@ -52,14 +58,76 @@ export default function Navbar() {
           </button>
         </form>
 
-        {/* Navigation Items */}
+        {/* Navigation Items (Home, Shop, Contact, Login/Profile) */}
         <div className="d-none d-lg-flex align-items-center gap-4 text-uppercase" style={{ fontSize: "0.8rem", letterSpacing: "0.15em", fontWeight: "600" }}>
-          <Link to="/" className="text-dark text-decoration-none hover-gold transition-colors">
-            Collections
+          
+          {/* Home Link */}
+          <Link 
+            to="/" 
+            className="text-dark text-decoration-none py-1 transition-colors"
+            style={{ 
+              borderBottom: isActive("/") && !location.hash ? "2px solid var(--color-charcoal-black)" : "2px solid transparent",
+              fontWeight: isActive("/") && !location.hash ? "700" : "600"
+            }}
+          >
+            Home
           </Link>
-          <Link to="/contact" className="text-dark text-decoration-none hover-gold transition-colors">
+
+          {/* Shop Link (scrolls to catalog) */}
+          <a 
+            href="#catalog-section"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/");
+              setTimeout(() => {
+                const el = document.getElementById("catalog-section");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }, 100);
+            }}
+            className="text-dark text-decoration-none py-1 transition-colors"
+            style={{ 
+              borderBottom: location.hash === "#catalog-section" ? "2px solid var(--color-charcoal-black)" : "2px solid transparent"
+            }}
+          >
+            Shop
+          </Link>
+
+          {/* Contact Link */}
+          <Link 
+            to="/contact" 
+            className="text-dark text-decoration-none py-1 transition-colors"
+            style={{ 
+              borderBottom: isActive("/contact") ? "2px solid var(--color-charcoal-black)" : "2px solid transparent",
+              fontWeight: isActive("/contact") ? "700" : "600"
+            }}
+          >
             Contact
           </Link>
+
+          {/* Auth Link (Login / Profile) */}
+          {isAuthenticated ? (
+            <Link 
+              to="/profile" 
+              className="text-dark text-decoration-none py-1 transition-colors"
+              style={{ 
+                borderBottom: isActive("/profile") ? "2px solid var(--color-charcoal-black)" : "2px solid transparent",
+                fontWeight: isActive("/profile") ? "700" : "600"
+              }}
+            >
+              Profile ({user.name.split(" ")[0]})
+            </Link>
+          ) : (
+            <Link 
+              to="/login" 
+              className="text-dark text-decoration-none py-1 transition-colors"
+              style={{ 
+                borderBottom: isActive("/login") ? "2px solid var(--color-charcoal-black)" : "2px solid transparent",
+                fontWeight: isActive("/login") ? "700" : "600"
+              }}
+            >
+              Login
+            </Link>
+          )}
 
           {/* Cart Icon */}
           <Link to="/cart" className="text-dark text-decoration-none position-relative py-2 ms-2">
@@ -71,31 +139,15 @@ export default function Navbar() {
             )}
           </Link>
 
-          {/* User Section */}
-          {isAuthenticated ? (
-            <div className="d-flex align-items-center gap-3 border-start ps-4 ms-2">
-              <Link to="/profile" className="d-flex align-items-center gap-2 text-dark text-decoration-none">
-                <div className="rounded-circle border d-flex align-items-center justify-content-center text-white bg-dark font-bold text-uppercase" style={{ width: "30px", height: "30px", fontSize: "0.75rem" }}>
-                  {user.name.charAt(0)}
-                </div>
-                <span className="text-dark text-xs d-none d-xl-inline text-truncate" style={{ maxWidth: "100px" }}>{user.name}</span>
-              </Link>
-              <button
-                onClick={handleLogoutClick}
-                className="btn p-0 border-0 text-secondary hover-gold cursor-pointer"
-                title="Sign Out"
-              >
-                <i className="bi bi-box-arrow-right" style={{ fontSize: "1.1rem" }}></i>
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="btn btn-dark text-white rounded-0 px-4 py-2 border-0"
-              style={{ fontSize: "0.75rem", letterSpacing: "0.15em", fontWeight: "700" }}
+          {/* Logout Button if authenticated */}
+          {isAuthenticated && (
+            <button
+              onClick={handleLogoutClick}
+              className="btn p-0 border-0 text-secondary hover-gold cursor-pointer ms-2"
+              title="Sign Out"
             >
-              SIGN IN
-            </Link>
+              <i className="bi bi-box-arrow-right" style={{ fontSize: "1.1rem" }}></i>
+            </button>
           )}
         </div>
 
@@ -134,15 +186,30 @@ export default function Navbar() {
 
           <div className="d-flex flex-column gap-3 text-uppercase font-semibold" style={{ fontSize: "0.85rem", letterSpacing: "0.1em" }}>
             <Link to="/" onClick={() => setMobileMenuOpen(false)} className="text-dark text-decoration-none">
-              Collections
+              Home
             </Link>
+            <a 
+              href="#catalog-section" 
+              onClick={(e) => {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                navigate("/");
+                setTimeout(() => {
+                  const el = document.getElementById("catalog-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }, 100);
+              }} 
+              className="text-dark text-decoration-none"
+            >
+              Shop
+            </a>
             <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="text-dark text-decoration-none">
               Contact
             </Link>
             {isAuthenticated ? (
               <>
                 <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="text-dark text-decoration-none">
-                  My Profile ({user.name})
+                  Profile ({user.name})
                 </Link>
                 <button
                   onClick={() => {
@@ -162,7 +229,7 @@ export default function Navbar() {
                 className="btn btn-dark rounded-0 text-center py-2 text-uppercase text-white"
                 style={{ fontSize: "0.75rem", letterSpacing: "0.1em" }}
               >
-                Sign In
+                Login
               </Link>
             )}
           </div>
