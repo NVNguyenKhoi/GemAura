@@ -87,6 +87,12 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     }
     
+    if (email === "khoinguyen@gemaura.com" && password === "GemAura123!") {
+      setUser(TEST_CUSTOMER);
+      setIsAuthenticated(true);
+      return { success: true };
+    }
+    
     const matchedUser = usersDb.find(u => u.email === email);
     if (matchedUser && password.length >= 6) {
       setUser(matchedUser);
