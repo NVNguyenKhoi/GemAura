@@ -1,6 +1,6 @@
 
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
@@ -19,7 +19,7 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <WishlistProvider>
-          <Router basename="/GemAura">
+          <Router>
             <div className="flex flex-col min-h-screen bg-ivory-white text-charcoal-black selection:bg-luxury-gold selection:text-white">
               {/* Premium Luxury Navbar */}
               <Navbar />
