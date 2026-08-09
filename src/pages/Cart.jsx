@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +27,59 @@ export default function Cart() {
   const [recentOrderId, setRecentOrderId] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Live Shipping Simulation States
+  const [shippingProgress, setShippingProgress] = useState(0); // 0 to 100%
+  const [shippingStage, setShippingStage] = useState("preparing"); // preparing | picked_up | shipping | arrived
+  const [eta, setEta] = useState(45); // countdown in seconds
+
+  // Handle countdown and progress simulation
+  useEffect(() => {
+    if (checkoutStep !== "success") return;
+
+    // Reset simulator values
+    setShippingProgress(0);
+    setShippingStage("preparing");
+    setEta(45);
+
+    // Stages timeline: 
+    // 0s - 8s: preparing (0% to 15%)
+    // 8s - 15s: picked_up (15% to 35%)
+    // 15s - 40s: shipping (35% to 90%)
+    // 40s+: arrived (100%)
+    const interval = setInterval(() => {
+      setEta((prevEta) => {
+        if (prevEta <= 1) {
+          clearInterval(interval);
+          setShippingStage("arrived");
+          setShippingProgress(100);
+          return 0;
+        }
+        
+        const nextEta = prevEta - 1;
+        const elapsedTime = 45 - nextEta;
+
+        // Calculate progress percentage and stage
+        if (elapsedTime < 8) {
+          setShippingStage("preparing");
+          setShippingProgress(Math.round((elapsedTime / 8) * 15));
+        } else if (elapsedTime < 15) {
+          setShippingStage("picked_up");
+          setShippingProgress(15 + Math.round(((elapsedTime - 8) / 7) * 20));
+        } else if (elapsedTime < 42) {
+          setShippingStage("shipping");
+          setShippingProgress(35 + Math.round(((elapsedTime - 15) / 27) * 55));
+        } else {
+          setShippingStage("arrived");
+          setShippingProgress(100);
+        }
+
+        return nextEta;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [checkoutStep]);
+
   const handleCouponSubmit = (e) => {
     e.preventDefault();
     setCouponError("");
@@ -48,14 +101,13 @@ export default function Cart() {
       navigate("/login");
       return;
     }
-    // Generate a temporary order ID for payment transfers reference
     const tempId = `GEM-${Math.floor(1000 + Math.random() * 9000)}`;
     setRecentOrderId(tempId);
     setCheckoutStep("payment");
   };
 
   const validatePayment = () => {
-    if (paymentMethod !== "card") return true; // Other methods validated via simulation
+    if (paymentMethod !== "card") return true;
 
     const errs = {};
     if (!paymentData.cardName.trim()) errs.cardName = "Cardholder name is required";
@@ -84,7 +136,6 @@ export default function Cart() {
     if (validatePayment()) {
       setIsProcessing(true);
       
-      // Simulate gateway authorization time
       setTimeout(() => {
         const orderItems = cartItems.map(item => ({
           id: item.id,
@@ -93,13 +144,11 @@ export default function Cart() {
           price: item.price
         }));
         
-        // Save the order to auth orders database
         addOrder(orderItems, total);
-        
         setIsProcessing(false);
         clearCart();
         setCheckoutStep("success");
-      }, 2500);
+      }, 2000);
     }
   };
 
@@ -108,35 +157,166 @@ export default function Cart() {
     setPaymentData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Convert USD price to approximate VND for QR Codes (1 USD = 25,000 VND)
   const exchangeRate = 25000;
   const totalInVND = total * exchangeRate;
 
-  // Generate VietQR API image url
   const bankId = "vietinbank";
   const accountNumber = "113366668888";
   const accountName = "GEMAURA JEWELRY";
   const vietQrUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-compact2.png?amount=${totalInVND}&addInfo=${recentOrderId}&accountName=${encodeURIComponent(accountName)}`;
 
+  // SVG Coordinates for the live shipping courier bike animation path
+  // Start: (40, 180) -> Mid 1: (150, 180) -> Mid 2: (150, 60) -> End: (360, 60)
+  const getBikeX = () => {
+    const p = shippingProgress / 100;
+    if (p < 0.35) {
+      // Segment 1: horizontal
+      return 40 + (p / 0.35) * 110;
+    } else if (p < 0.65) {
+      // Segment 2: vertical
+      return 150;
+    } else {
+      // Segment 3: horizontal
+      return 150 + ((p - 0.65) / 0.35) * 210;
+    }
+  };
+
+  const getBikeY = () => {
+    const p = shippingProgress / 100;
+    if (p < 0.35) {
+      return 180;
+    } else if (p < 0.65) {
+      // Segment 2: vertical
+      return 180 - ((p - 0.35) / 0.30) * 120;
+    } else {
+      return 60;
+    }
+  };
+
   if (checkoutStep === "success") {
     return (
-      <div className="container py-5 text-center d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "70vh" }}>
-        <div className="rounded-circle border border-success d-flex align-items-center justify-content-center text-success bg-light mb-4" style={{ width: "80px", height: "80px", fontSize: "2.5rem" }}>
-          <i className="bi bi-patch-check"></i>
-        </div>
-        <h2 className="font-editorial text-uppercase text-dark display-5">Aura Transacted Successfully</h2>
-        <div className="bg-warning my-3" style={{ height: "1px", width: "80px" }}></div>
-        <p className="text-secondary text-uppercase tracking-wider mb-4" style={{ fontSize: "0.8rem", maxWidth: "500px" }}>
-          Your payment has been authorized. The jewelry workshop has queued your order under reference code:
-          <span className="text-dark d-block mt-2 font-monospace font-bold" style={{ fontSize: "1.1rem" }}>{recentOrderId}</span>
-        </p>
-        <div className="d-flex gap-3">
-          <Link to="/profile" className="btn btn-outline-dark rounded-0 px-4 py-2" style={{ fontSize: "0.8rem", letterSpacing: "0.05em" }}>
-            Track Staging Queue
-          </Link>
-          <Link to="/" className="btn btn-dark rounded-0 px-4 py-2" style={{ fontSize: "0.8rem", letterSpacing: "0.05em" }}>
-            Continue Exploring
-          </Link>
+      <div className="container py-5">
+        <div className="row g-4 justify-content-center">
+          <div className="col-12 col-lg-8">
+            <div className="bg-white border p-4 p-md-5 text-center">
+              
+              {/* Stepper Progress Header */}
+              <div className="rounded-circle border border-success d-flex align-items-center justify-content-center text-success bg-light mx-auto mb-3" style={{ width: "60px", height: "60px", fontSize: "2rem" }}>
+                <i className={`bi ${shippingStage === 'arrived' ? 'bi-check-all' : 'bi-bicycle text-warning animate-pulse'}`}></i>
+              </div>
+              <h2 className="font-editorial text-uppercase text-dark mb-1">
+                {shippingStage === "arrived" ? "Order Delivered Successfully!" : "Grab Express Shipping Active"}
+              </h2>
+              <p className="text-secondary text-uppercase tracking-wider" style={{ fontSize: "0.7rem" }}>
+                Order Ref: <span className="font-monospace text-dark font-bold">{recentOrderId}</span>
+              </p>
+
+              {/* LIVE MAP TRACKING BOX (SVG ROAD SYSTEM AND MOCK DRIVER) */}
+              <div className="border bg-dark my-4 p-3 position-relative overflow-hidden" style={{ height: "240px" }}>
+                {/* Background Grid Roads */}
+                <svg className="w-100 h-100" style={{ opacity: 0.85 }}>
+                  {/* Road Lines */}
+                  <line x1="40" y1="180" x2="150" y2="180" stroke="#444" strokeWidth="18" strokeLinecap="round" />
+                  <line x1="150" y1="180" x2="150" y2="60" stroke="#444" strokeWidth="18" strokeLinecap="round" />
+                  <line x1="150" y1="60" x2="360" y2="60" stroke="#444" strokeWidth="18" strokeLinecap="round" />
+                  
+                  {/* Road Center dashes */}
+                  <line x1="40" y1="180" x2="150" y2="180" stroke="#fff" strokeWidth="2" strokeDasharray="6,6" />
+                  <line x1="150" y1="180" x2="150" y2="60" stroke="#fff" strokeWidth="2" strokeDasharray="6,6" />
+                  <line x1="150" y1="60" x2="360" y2="60" stroke="#fff" strokeWidth="2" strokeDasharray="6,6" />
+
+                  {/* Start Point Pin (GemAura Vault) */}
+                  <circle cx="40" cy="180" r="10" fill="var(--color-luxury-gold)" />
+                  <text x="35" y="210" fill="#FDFBF7" fontSize="10" className="font-sans font-bold">GEM VAULT</text>
+
+                  {/* End Point Pin (Client Home) */}
+                  <circle cx="360" cy="60" r="10" fill="#198754" />
+                  <text x="325" y="40" fill="#FDFBF7" fontSize="10" className="font-sans font-bold">YOUR HOME</text>
+
+                  {/* Dynamic Courier Grab Rider Icon */}
+                  {shippingStage !== "arrived" && (
+                    <g transform={`translate(${getBikeX() - 12}, ${getBikeY() - 25})`}>
+                      <circle cx="12" cy="12" r="14" fill="#198754" stroke="#fff" strokeWidth="1" />
+                      {/* Courier Bike Icon */}
+                      <text x="5" y="18" fill="#fff" fontSize="14">🏍️</text>
+                    </g>
+                  )}
+                </svg>
+
+                {/* Arrived Celebration Banner */}
+                {shippingStage === "arrived" && (
+                  <div className="position-absolute top-50 start-50 translate-middle bg-success text-white px-4 py-3 shadow-lg border" style={{ zIndex: 10 }}>
+                    <h5 className="font-editorial text-uppercase mb-1" style={{ fontSize: "1.1rem" }}>Courier Arrived!</h5>
+                    <span style={{ fontSize: "0.75rem" }}>Your GIA Certified gemstones have been securely delivered.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* DRIVER AND DELIVERY STATUS TIMELINE */}
+              <div className="row g-3 text-start mb-4">
+                <div className="col-12 col-md-6 border-end">
+                  <span className="text-uppercase text-secondary d-block tracking-wider mb-2" style={{ fontSize: "0.65rem", fontWeight: "600" }}>
+                    Live Delivery Status
+                  </span>
+                  
+                  {/* Status Stages Steps */}
+                  <div className="d-flex flex-column gap-2" style={{ fontSize: "0.8rem" }}>
+                    <div className="d-flex align-items-center gap-2">
+                      <i className={`bi ${shippingProgress >= 10 ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'}`}></i>
+                      <span className={shippingStage === 'preparing' ? 'font-bold text-dark' : 'text-secondary'}>Preparing premium order packaging</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <i className={`bi ${shippingProgress >= 35 ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'}`}></i>
+                      <span className={shippingStage === 'picked_up' ? 'font-bold text-dark' : 'text-secondary'}>Grab Rider picked up from GemAura Salon</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <i className={`bi ${shippingProgress >= 85 ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'}`}></i>
+                      <span className={shippingStage === 'shipping' ? 'font-bold text-dark' : 'text-secondary'}>Courier shipping package to your destination</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <i className={`bi ${shippingStage === 'arrived' ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'}`}></i>
+                      <span className={shippingStage === 'arrived' ? 'font-bold text-success' : 'text-secondary'}>Delivered to your hands</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-6 ps-md-4">
+                  <span className="text-uppercase text-secondary d-block tracking-wider mb-2" style={{ fontSize: "0.65rem", fontWeight: "600" }}>
+                    Courier Details
+                  </span>
+                  <div className="d-flex align-items-center gap-3">
+                    {/* Grab Driver Avatar */}
+                    <div className="rounded-circle bg-light border d-flex align-items-center justify-content-center text-secondary" style={{ width: "50px", height: "50px", fontSize: "1.5rem" }}>
+                      <i className="bi bi-person-badge"></i>
+                    </div>
+                    <div style={{ fontSize: "0.8rem", lineHeight: "1.4" }}>
+                      <strong className="text-dark d-block">Nguyen Quoc Huy (GrabExpress)</strong>
+                      <span className="text-secondary d-block">License: 59-X3 982.71</span>
+                      <span className="text-success d-block"><i className="bi bi-star-fill text-warning me-1"></i> 5.0 Rating</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 p-2 bg-light border text-center">
+                    <span className="text-secondary text-uppercase d-block" style={{ fontSize: "0.6rem" }}>ESTIMATED COURIER ARRIVAL</span>
+                    <strong className="text-dark font-monospace" style={{ fontSize: "1.3rem" }}>
+                      {shippingStage === "arrived" ? "ARRIVED" : `${Math.floor(eta / 60)}m ${eta % 60}s`}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="d-flex gap-3 justify-content-center border-top pt-4">
+                <Link to="/profile" className="btn btn-outline-dark rounded-0 px-4 py-2" style={{ fontSize: "0.8rem", letterSpacing: "0.05em" }}>
+                  View All Orders
+                </Link>
+                <Link to="/" className="btn btn-dark rounded-0 px-4 py-2" style={{ fontSize: "0.8rem", letterSpacing: "0.05em" }}>
+                  Return to Home
+                </Link>
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
     );
