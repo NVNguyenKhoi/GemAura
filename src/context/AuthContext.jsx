@@ -10,6 +10,14 @@ const DEFAULT_USER = {
   billingAddress: "742 Lapis Lazuli Way, Emerald Hills, CA 90210",
 };
 
+const TEST_CUSTOMER = {
+  name: "Nguyen Khoi",
+  email: "khoinguyen@gemaura.com",
+  phone: "+84 909 123 456",
+  address: "123 Duong Ba Trac, District 8, Ho Chi Minh City",
+  billingAddress: "123 Duong Ba Trac, District 8, Ho Chi Minh City",
+};
+
 const DEFAULT_ORDERS = [
   {
     id: "GEM-9827",
@@ -44,7 +52,7 @@ export const AuthProvider = ({ children }) => {
 
   const [usersDb, setUsersDb] = useState(() => {
     const db = localStorage.getItem("gemaura_users_db");
-    return db ? JSON.parse(db) : [DEFAULT_USER];
+    return db ? JSON.parse(db) : [DEFAULT_USER, TEST_CUSTOMER];
   });
 
   const [recentlyViewed, setRecentlyViewed] = useState(() => {
@@ -86,7 +94,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     }
 
-    return { success: false, message: "Invalid credentials. Hint: aurelia@gemaura.com / GemAura123!" };
+    return { success: false, message: "Invalid credentials. Hint: aurelia@gemaura.com or khoinguyen@gemaura.com with GemAura123!" };
   };
 
   const register = (name, email, phone, password) => {
